@@ -165,6 +165,22 @@ def get_grid(atm, ocn): #reads lat lon for tripolar ocean grid
     return LON, LAT, numlev
 
 
+def remap_gfdl(aicen, vicen, inds, indis, indjs, aicenpm5, vicenpm5):
+    sis_ic=np.array([0.0, 0.1, 0.3, 0.7, 1.1], dtype='float64')
+    fac1=(0.6445-0.3)/(0.7-0.3)
+    fac2=((1.391-1.1)/(2.035-1.085))
+    fac3=((2.47-2.035)/(3.42-2.035))
+    fac4=((4.567-3.42)/(5.31-3.42))
+    aicenpm5[0, inds] = sum(aicenpm[:2,indjs,indis], axis=0) + \
+                            aicenpm[2,indjs,indis] * fac1     
+    aicenpm5[1, inds] = aicenpm[2,indjs,indis]*(1.-fac1) + \
+                        aicenpm[3,indjs,indis] +           \
+                        aicenpm[4,indjs,indis] 
+    aicenpm5[2, inds] = aicenpm[3,indjs,indis]*(1.-fac2) + aicenpm[4,indjs,indis] * fac3
+    aicenpm5[3, inds] = aicenpm[4,indjs,indis]*(1.-fac3) + aicenpm[5,indjs,indis] * fac4
+    aicenpm5[4, inds] = aicenpm[5,indjs,indis]*(1.-fac4) + np.sum(aicenpm[6:,indjs,indis],axis=0)
+
+
 
 im,jm=360,120
 km = 30
@@ -205,26 +221,18 @@ for k in range(nilyr):
 salin[nilyr] = saltmax
 Tmlt[nilyr] = -salin[nilyr]*depressT
 
-#PIO_DIR='/gpfsm/dnb04/projects/p94/verification/PIOMAS/RAW/MONTHLY'
-PIO_DIR='/gpfsm/dnb02/bzhao/ObservationData/PIOMAS'
 
-grid_file = PIO_DIR+'/grid.dat'
-mask_file = PIO_DIR+'/io.dat_360_120.output'
 
-Year = sys.argv[1]
-Mon = int(sys.argv[2])
-Day = int(sys.argv[3])
-icein = sys.argv[4]
+icein = sys.argv[1]
 p = icein.split('/')
 iceout = '/'.join(p[:-1]+[p[-1]+'_piomas_inserted_'+'e'+Year+'-'+str(Mon)+'-'+str(Day)])
-tilefile = sys.argv[5]
-fld = 'giceday'
+tilefile = sys.argv[2]
 print icein
 print iceout
 
 #data_file = PIO_DIR+'/iceprod.H'+Year
 #data_file = PIO_DIR+'/tice0.H'+Year
-data_file = PIO_DIR+'/'+fld+'.H'+Year
+#data_file = PIO_DIR+'/'+fld+'.H'+Year
 
 index=[[0 for _ in range(ncat-1)] for _ in range(ncat)]
 ii=range(ncat)
@@ -241,16 +249,6 @@ for j in dist:
 print index
 #POLE='N'
 
-xx=np.loadtxt(grid_file)
-#print xx.shape
-yy = np.reshape(xx,(im*jm*2))
-#print yy.shape
-
-clon = np.reshape(yy[:im*jm],(jm,im))
-clat = np.reshape(yy[im*jm:],(jm,im))
-
-xx = np.genfromtxt(mask_file, dtype='i2', delimiter=2)
-cmask = np.reshape(xx,(jm,im))
 
 
 #print clon.shape
@@ -258,11 +256,6 @@ cmask = np.reshape(xx,(jm,im))
 
 zz=None
 
-with open(data_file, 'rb') as f: 
-  for n in range(365):
-      data = np.fromfile(f,dtype='float32', count=im*jm*kitd)
-      if datetime.datetime(1999, Mon, Day).timetuple().tm_yday == n+1:
-         zz = data.copy()
 
 #print recl
 #print data.shape
@@ -322,6 +315,7 @@ with Dataset(icein) as src, Dataset(iceout, "w") as dst:
     aicenpm5 = aicen.copy(order='C')
     vicenpm5 = vicen.copy(order='C')
 
+    '''
     start = time.time()
     aicenpm = np.zeros((kitd, sw.ny, sw.nx), dtype='float64', order='C')
     hice_in = np.ma.array(hice[0])
@@ -337,6 +331,7 @@ with Dataset(icein) as src, Dataset(iceout, "w") as dst:
         aicenpm[n,:,:] = hice_out
     end = time.time()
     print("Elapsed (interplating to tripolar) = %s" % (end - start))
+    '''
     indi = sw.gi[:]-1 
     indj = sw.gj[:]-1   
     ind = np.array(range(sw.size))
