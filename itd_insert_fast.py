@@ -189,22 +189,7 @@ def remap_gfdl(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vic
     aicenpm5[3, inds] = aicenpm[4,indjs,indis]*(1.-fac3) + aicenpm[5,indjs,indis] * fac4
     aicenpm5[4, inds] = aicenpm[5,indjs,indis]*(1.-fac4) + np.sum(aicenpm[6:,indjs,indis],axis=0)
 
-def read_mit(infile):
-    # read in the MITgcm sea ice restart file (binary or netcdf)
-    # return aice,hice/volice in dimension (ny, nx)
-    # there is no category dimension since mitgcm has only 1 category 
-    '''
-    : type infile: str  
-    : rtype: NDArray, NDArray
-    ''' 
-    pass
-
-def remap_mit(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vicen_target):
-    '''
-    repartition ice fraction and volume to cice categories
-    '''
-    pass
-
+from mitgcm import (read_mit, remap_mit)
 
 
 im,jm=360,120
