@@ -165,7 +165,16 @@ def get_grid(atm, ocn): #reads lat lon for tripolar ocean grid
     return LON, LAT, numlev
 
 
-def remap_gfdl(aicen, vicen, inds, indis, indjs, aicenpm5, vicenpm5):
+def read_gfdl(infile):
+    # read in the GFDL SIS sea ice restart file (netcdf)
+    # return aice,hice/volice in dimension (5, ny, nx)
+    '''
+    : type infile: str  
+    : rtype: NDArray, NDArray
+    ''' 
+    pass
+
+def remap_gfdl(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vicen_target):
     sis_ic=np.array([0.0, 0.1, 0.3, 0.7, 1.1], dtype='float64')
     fac1=(0.6445-0.3)/(0.7-0.3)
     fac2=((1.391-1.1)/(2.035-1.085))
@@ -179,6 +188,22 @@ def remap_gfdl(aicen, vicen, inds, indis, indjs, aicenpm5, vicenpm5):
     aicenpm5[2, inds] = aicenpm[3,indjs,indis]*(1.-fac2) + aicenpm[4,indjs,indis] * fac3
     aicenpm5[3, inds] = aicenpm[4,indjs,indis]*(1.-fac3) + aicenpm[5,indjs,indis] * fac4
     aicenpm5[4, inds] = aicenpm[5,indjs,indis]*(1.-fac4) + np.sum(aicenpm[6:,indjs,indis],axis=0)
+
+def read_mit(infile):
+    # read in the MITgcm sea ice restart file (binary or netcdf)
+    # return aice,hice/volice in dimension (ny, nx)
+    # there is no category dimension since mitgcm has only 1 category 
+    '''
+    : type infile: str  
+    : rtype: NDArray, NDArray
+    ''' 
+    pass
+
+def remap_mit(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vicen_target):
+    '''
+    repartition ice fraction and volume to cice categories
+    '''
+    pass
 
 
 
@@ -221,14 +246,19 @@ for k in range(nilyr):
 salin[nilyr] = saltmax
 Tmlt[nilyr] = -salin[nilyr]*depressT
 
-
+func_map = {'gfdl': (read_gfdl, remap_gfdl), 
+            'mit': (read_mit, remap_mit)} 
 
 icein = sys.argv[1]
 p = icein.split('/')
 iceout = '/'.join(p[:-1]+[p[-1]+'_piomas_inserted_'+'e'+Year+'-'+str(Mon)+'-'+str(Day)])
 tilefile = sys.argv[2]
+institute = sys.argv[3]
+ice_source = sys.argv[4]
 print icein
 print iceout
+print institute
+print ice_sourcet 
 
 #data_file = PIO_DIR+'/iceprod.H'+Year
 #data_file = PIO_DIR+'/tice0.H'+Year
@@ -284,6 +314,9 @@ hicepm = np.sum(hicepm, axis=0)
 
 sw = saltwatertile(tilefile)
 LON, LAT, numlevels = get_grid(sw.atm, sw.ocn)
+
+# read in source dataset
+aice_s, vice_s = func_map[institute][0](ice_source)
 
 with Dataset(icein) as src, Dataset(iceout, "w") as dst:
     # copy global attributes all at once via dictionary
