@@ -18,12 +18,6 @@ import struct
 import datetime
 import time
 import sys
-sys.path.append('/home/bzhao/python_utils')
-#import read_utils
-#import plot_utils
-#import math_utils
-#import read_utils
-import data_utils
 #import get_info
 #from pylab import *
 import functools
