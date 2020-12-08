@@ -40,6 +40,6 @@ def remap_mit(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vice
     pass
 
 
-if __name__ = "__main__":
+if __name__ == "__main__":
 
     pass
