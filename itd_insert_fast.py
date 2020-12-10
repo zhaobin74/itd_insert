@@ -161,12 +161,9 @@ def get_grid(atm, ocn): #reads lat lon for tripolar ocean grid
 
 
 from mitgcm import (read_mit, remap_mit)
+from gfdl import (read_gfdl, remap_gfdl)
 
 
-im,jm=360,120
-km = 30
-kitd = 12
-lat_cutoff = 60.0
 
 #CICE dimensions
 
@@ -174,7 +171,7 @@ ncat = 5
 nilyr = 4
 nslyr = 1
 
-
+puny = 1.e-11
 p5 = 0.5
 c1 = 1.0
 c2 = 2.0
@@ -205,20 +202,20 @@ Tmlt[nilyr] = -salin[nilyr]*depressT
 func_map = {'gfdl': (read_gfdl, remap_gfdl), 
             'mit': (read_mit, remap_mit)} 
 
-icein = sys.argv[1]
-p = icein.split('/')
-iceout = '/'.join(p[:-1]+[p[-1]+'_piomas_inserted_'+'e'+Year+'-'+str(Mon)+'-'+str(Day)])
-tilefile = sys.argv[2]
-institute = sys.argv[3]
-ice_source = sys.argv[4]
+tilefile = sys.argv[1]
+institute = sys.argv[2]
+ice_source = sys.argv[3]
+print 'tile file: ', tilefile
+print 'source sea ice datafile: ', ice_source
+print 'from ', institute
+try:
+   icein = sys.argv[4]
+except:
+   icein = None
 print icein
-print iceout
-print institute
-print ice_sourcet 
-
-#data_file = PIO_DIR+'/iceprod.H'+Year
-#data_file = PIO_DIR+'/tice0.H'+Year
-#data_file = PIO_DIR+'/'+fld+'.H'+Year
+p = icein.split('/')
+iceout = 'seaicethermo_internal_rst-'+institute+'_inserted'
+print 'output GEOS seaice thermo restart file: ', iceout
 
 index=[[0 for _ in range(ncat-1)] for _ in range(ncat)]
 ii=range(ncat)
@@ -233,227 +230,128 @@ for j in dist:
     index[j]= [x[1]-1 for x in dist[j]]     
     #print j, dist[j]
 print index
-#POLE='N'
 
-
-
-#print clon.shape
-#print clat.shape
 
 zz=None
 
 
-#print recl
-#print data.shape
-hice = np.reshape(zz, (kitd,jm,im))
-
-
-#print hice[0,:20]
-
-
-piomas_ic=np.array([0.0, 0.26, 0.71, 
-              1.46, 2.61, 4.23, 6.39, 9.10, 12.39, 16.24, 20.62, 25.49], dtype='float64')
-
-fac1=((0.6445-0.485)/(1.085-0.485))
-fac2=((1.391-1.085)/(2.035-1.085))
-fac3=((2.47-2.035)/(3.42-2.035))
-fac4=((4.567-3.42)/(5.31-3.42))
-
-
-missing=-9999.0
-
-
-hicepm = hice.transpose()*piomas_ic
-hicepm = hicepm.transpose()
-hicepm = np.sum(hicepm, axis=0)
-
 
 sw = saltwatertile(tilefile)
-LON, LAT, numlevels = get_grid(sw.atm, sw.ocn)
+#LON, LAT, numlevels = get_grid(sw.atm, sw.ocn)
 
 # read in source dataset
-aice_s, vice_s = func_map[institute][0](ice_source)
+source_data = func_map[institute][0](ice_source)
 
-with Dataset(icein) as src, Dataset(iceout, "w") as dst:
-    # copy global attributes all at once via dictionary
-    dst.setncatts(src.__dict__)
-    # copy dimensions
-    for name, dimension in src.dimensions.items():
-        dst.createDimension(
+if institute == 'gfdl':
+   aicen_s, vicen_s, vsnon_s, tskin_s = source_data 
+
+ 
+if icein:
+    with Dataset(icein) as src, Dataset(iceout, "w") as dst:
+       # copy global attributes all at once via dictionary
+       dst.setncatts(src.__dict__)
+       # copy dimensions
+       for name, dimension in src.dimensions.items():
+           dst.createDimension(
             name, (len(dimension) if not dimension.isunlimited() else None))
-    # copy all file data except for the excluded
-    for name, variable in src.variables.items():
-        x = dst.createVariable(name, variable.datatype, variable.dimensions)
-        dst[name][:] = src[name][:]
-        # copy variable attributes all at once via dictionary
-        dst[name].setncatts(src[name].__dict__)
-    aicenout = dst['FR']
-    vicenout = dst['VOLICE']
-    vsnonout = dst['VOLSNO']
-    tskinout = dst['TSKINI']
-    eicenout = dst['ERGICE']
-    esnonout = dst['ERGSNO']
-    aicen = dst['FR'][:]
-    vicen = dst['VOLICE'][:]
-    vsnon = dst['VOLSNO'][:]
-    tskin = dst['TSKINI'][:]
-    eicen = dst['ERGICE'][:]
-    esnon = dst['ERGSNO'][:]
-    eicen = np.swapaxes(eicen,0,1)
-    esnon = np.swapaxes(esnon,0,1)
-    aicenpm5 = aicen.copy(order='C')
-    vicenpm5 = vicen.copy(order='C')
+       # copy all file data except for the excluded
+       for name, variable in src.variables.items():
+           x = dst.createVariable(name, variable.datatype, variable.dimensions)
+           dst[name][:] = src[name][:]
+           # copy variable attributes all at once via dictionary
+           dst[name].setncatts(src[name].__dict__)
+       aicenout = dst['FR']
+       vicenout = dst['VOLICE']
+       vsnonout = dst['VOLSNO']
+       tskinout = dst['TSKINI']
+       eicenout = dst['ERGICE']
+       esnonout = dst['ERGSNO']
+       aicen = dst['FR'][:]
+       vicen = dst['VOLICE'][:]
+       vsnon = dst['VOLSNO'][:]
+       tskin = dst['TSKINI'][:]
+       eicen = dst['ERGICE'][:]
+       esnon = dst['ERGSNO'][:]
+       eicen = np.swapaxes(eicen,0,1)
+       print 'eice shape ', eicen.shape
+       esnon = np.swapaxes(esnon,0,1)
+       aicenpm5 = aicen.copy(order='C')
+       vicenpm5 = vicen.copy(order='C')
 
-    '''
-    start = time.time()
-    aicenpm = np.zeros((kitd, sw.ny, sw.nx), dtype='float64', order='C')
-    hice_in = np.ma.array(hice[0])
-    hice_in.mask = cmask == 0 
-    lon_in_filtered = clon[np.logical_not(hice_in.mask)]
-    lat_in_filtered = clat[np.logical_not(hice_in.mask)]
-    nn = get_nearest(lon_in_filtered, lat_in_filtered, LON, LAT, 25)
-    for n in range(kitd):
-        hice_in = np.ma.array(hice[n])
-        hice_in.mask = cmask == 0 
-        hice_in_filtered = hice_in[np.logical_not(hice_in.mask)]
-        hice_out = nearest_interp_new(hice_in_filtered, LON, LAT, nn)
-        aicenpm[n,:,:] = hice_out
-    end = time.time()
-    print("Elapsed (interplating to tripolar) = %s" % (end - start))
-    '''
-    indi = sw.gi[:]-1 
-    indj = sw.gj[:]-1   
-    ind = np.array(range(sw.size))
-
-    indis = indi[LAT[indj,indi]>lat_cutoff]
-    indjs = indj[LAT[indj,indi]>lat_cutoff]
-    inds = ind[LAT[indj,indi]>lat_cutoff]
-    xx = piomas_ic[6:].reshape(6,1) 
-
-    start = time.time()
-    aicenpm5[0, inds] = aicenpm[1,indjs,indis]           + aicenpm[2,indjs,indis] * fac1     
-    aicenpm5[1, inds] = aicenpm[2,indjs,indis]*(1.-fac1) + aicenpm[3,indjs,indis] * fac2
-    aicenpm5[2, inds] = aicenpm[3,indjs,indis]*(1.-fac2) + aicenpm[4,indjs,indis] * fac3
-    aicenpm5[3, inds] = aicenpm[4,indjs,indis]*(1.-fac3) + aicenpm[5,indjs,indis] * fac4
-    aicenpm5[4, inds] = aicenpm[5,indjs,indis]*(1.-fac4) + np.sum(aicenpm[6:,indjs,indis],axis=0)
-    vicenpm5[0, inds] = aicenpm[1,indjs,indis]*piomas_ic[1]           + aicenpm[2,indjs,indis]*piomas_ic[2]*fac1
-    vicenpm5[1, inds] = aicenpm[2,indjs,indis]*piomas_ic[2]*(1.-fac1) + aicenpm[3,indjs,indis]*piomas_ic[3]*fac2
-    vicenpm5[2, inds] = aicenpm[3,indjs,indis]*piomas_ic[3]*(1.-fac2) + aicenpm[4,indjs,indis]*piomas_ic[4]*fac3
-    vicenpm5[3, inds] = aicenpm[4,indjs,indis]*piomas_ic[4]*(1.-fac3) + aicenpm[5,indjs,indis]*piomas_ic[5]*fac4
-    vicenpm5[4, inds] = aicenpm[5,indjs,indis]*piomas_ic[5]*(1.-fac4) + np.sum(aicenpm[6:,indjs,indis]*xx, axis=0)
-    exc = np.sum(aicenpm5,axis=0)-1.
-    for n in range(ncat):
-        aicenpm5[n,np.logical_and(exc > 5.e-7, aicenpm5[n,:]>exc)] -= exc[np.logical_and(exc > 5.e-7, aicenpm5[n,:]>exc)]  
-        exc = np.sum(aicenpm5,axis=0)-1.
-
-    hs = np.zeros((ncat,sw.size), dtype='float64') 
-    hin = np.zeros((ncat,sw.size), dtype='float64') 
-    qin = np.zeros((nilyr,ncat,sw.size), dtype='float64')
-    qsn = np.zeros((nslyr,ncat,sw.size), dtype='float64')
-    #hs[aicen>0.0] = vsnon[aicen>0.0]/aicen[aicen>0.0]
-    qsn[:,vsnon>0.0] = esnon[:,vsnon>0.0]*nslyr/vsnon[vsnon>0.0] 
-    qin[:,vicen>0.0] = eicen[:,vicen>0.0]*nilyr/vicen[vicen>0.0] 
-    aicen[:,inds] = aicenpm5[:,inds] 
-
-    yy = np.zeros((ncat, sw.size))
-    yy[:, LAT[indj,indi]>lat_cutoff] = 1.0
-    maska = np.logical_and(yy>0.0, np.logical_and(vicenpm5 > 0.0, vicen > 0.0))
-    maskb = np.logical_and(yy>0.0, np.logical_and(vicenpm5 > 0.0, vicen == 0.0))
-    maskc = np.logical_and(yy>0.0, np.logical_and(vicenpm5 == 0.0, vicen > 0.0))
-
-    vicen[maska] = vicenpm5[maska] 
-    eicen[:,maska] = qin[:,maska]*vicen[maska]/nilyr
-
-    aicen[maskc] = 0.0
-    vicen[maskc] = 0.0
-    vsnon[maskc] = 0.0
-    tskin[maskc] = Tice
-    eicen[:,maskc] = 0.0
-    esnon[:,maskc] = 0.0
-
-       
-    qi0 = -rhoi * (cp_ice*(Tmlt[:-1]-Tf) 
-           + Lfresh*(1.-Tmlt[:-1]/Tf) - cp_ocn*Tmlt[:-1])
-    qi0 = np.reshape(np.tile(qi0,ncat*sw.size),(sw.size,ncat,nilyr))  
-    qi0 = qi0.transpose()
-    qim = np.zeros((ncat,nilyr,sw.size), dtype='float64')
-    tim = np.zeros((ncat,sw.size), dtype='float64')
-
-    for n in range(ncat):
-        for k in range(len(index[n])):
-           qimq = qim[n,:,:] 
-           timq = tim[n,:] 
-           qinc = qin[:,index[n][k],:]
-           timc = tskin[index[n][k],:]
-           qimq[qimq==0.0] = qinc[qimq==0.0] 
-           timq[timq==0.0] = timc[timq==0.0] 
-           qim[n,:,:] = qimq
-           tim[n,:] = timq
-    for n in range(ncat):
-        qimq = qim[n,:,:] 
-        qinc = qi0[:,index[n][k],:]
-        qimq[qimq==0.0] = qinc[qimq==0.0] 
-        qim[n,:,:] = qimq
-    tim[tim==0.0] = Tf + Tice
-    qim = np.swapaxes(qim,0,1)
-    vicen[maskb] = vicenpm5[maskb] 
-    eicen[:,maskb] = qim[:,maskb]*vicen[maskb]/nilyr
-    tskin[maskb] = tim[maskb]
-
-    hs[aicen>0.0] = vsnon[aicen>0.0]/aicen[aicen>0.0]
-    hin[aicen>0.0] = vicen[aicen>0.0]/aicen[aicen>0.0]
-    hsn = (rhow - rhoi) / rhos * hin
-    hs[hs>hsn] = hsn[hs>hsn]
-    vsnon = hs*aicen 
-    esnon[:,vsnon>0.0] = qsn[:,vsnon>0.0]*vsnon[vsnon>0.0]/nslyr 
-    esnon[:,vsnon==0.0] = 0.0 
-
-    aicenout[:] = aicen[:]
-    tskinout[:] = tskin[:]
-    vicenout[:] = vicen[:]
-    vsnonout[:] = vsnon[:]
-    eicenout[:] = np.swapaxes(eicen,0,1) 
-    esnonout[:] = np.swapaxes(esnon,0,1)
-
-    end = time.time()
-    print("Elapsed (aggregating onto CICE ITD) = %s" % (end - start))
-       
-#lat_p = LAT[numlevels>0].flatten()
+       indi = sw.gi[:]-1 
+       indj = sw.gj[:]-1   
+       ind = np.array(range(sw.size))
 
 
+       start = time.time()
+
+       hs = np.zeros((ncat,sw.size), dtype='float64') 
+       hin = np.zeros((ncat,sw.size), dtype='float64') 
+       qin = np.zeros((nilyr,ncat,sw.size), dtype='float64')
+       qsn = np.zeros((nslyr,ncat,sw.size), dtype='float64')
+#qsn[:,vsnon>0.0] = esnon[:,vsnon>0.0]*nslyr/vsnon[vsnon>0.0] 
+#qin[:,vicen>0.0] = eicen[:,vicen>0.0]*nilyr/vicen[vicen>0.0] 
 
 
-cmp = mcm.get_cmap('jet')
-meridians=[1,0,1,1]
+       #eicen[:,maska] = qin[:,maska]*vicen[maska]/nilyr
+       for i in range(sw.size):
+           func_map[institute][1](aicen_s[:,indj[i],indi[i]], 
+                                  vicen_s[:,indj[i],indi[i]], 
+                                  vsnon_s[:,indj[i],indi[i]], 
+                                  aicen[:,i], vicen[:,i], vsnon[:,i]) 
+           tskin[:,i] = np.minimum(Tice, tskin_s[:,indj[i],indi[i]])    
+           #'''
+           for n in range(ncat):
+          # assume linear temp profile and compute enthalpy
+             if aicen[n,i] > puny: 
+                ts_s = tskin_s[n,indj[i],indi[i]]-Tice 
+                height = vicen[n,i]/aicen[n,i]
+                hi = height
+                hs = 0.0  
+                nls = nilyr  
+                if vsnon[n,i] > puny:  
+                    hs = vsnon[n,i]/aicen[n,i]      
+                    height += hs 
+                    nls += nslyr
+                slope = (Tf - ts_s) / height 
+                for k in range(nls):
+                   if k < nls - nilyr:
+                       Ti =  ts_s + slope*(k+0.5)*hs/float(nslyr)
+                       esnon[k,n,i] =  -rhos * (-cp_ice*Ti + Lfresh)
+                   else:        
+                        kl = k if nls == nilyr else k-nslyr    
+                        Ti =  ts_s + slope*(hs+(kl+0.5)*hi/float(nilyr))
+                        eicen[kl,n,i] =    \
+                      -(rhoi * (cp_ice*(Tmlt[kl]-Ti)  \
+                      + Lfresh*(1.0-Tmlt[kl]/Ti) - cp_ocn*Tmlt[kl])) \
+                      * vicen[n,i]/float(nilyr) 
+          #'''  
 
-fig=plt.figure(figsize=(10,10), facecolor='w')
-#fig.subplots_adjust(left=0.05, right=1.0, top=0.99, bottom=0.01,wspace=0.05,hspace=0.05)
-ax=fig.add_axes([0.06, 0.0, 0.98, 0.98])
-
-m = Basemap(projection='npstere',lon_0=0,boundinglat=45, resolution='l')
-m.drawcoastlines()
-m.fillcontinents()
-m.drawcountries()
-plt.title('PIOMAS: '+fld+' '+Year+'-'+str(Mon)+'-'+str(Day),y=1.05,size=25)
-
-x, y =m(clon,clat)
-#outside = (x <= m.xmin) | (x >= m.xmax) | (y <= m.ymin) | (y >= m.ymax)
-#fbot = ma.masked_where(outside, fbot)
-#m.pcolormesh(x,y,hice,cmap=cmp,vmin=0.0, vmax=4.0)
-levl = 0 #m.pcolormesh(x,y,hice,cmap=cmp,vmin=-2, vmax=2)
-m.pcolormesh(x,y,hicepm,cmap=cmp,vmin=0.0, vmax=4.0)
-#m.pcolormesh(x,y,hice[levl],cmap=cmp,vmin=0.0, vmax=4.0)
-
-#m.pcolormesh(x,y,hice,cmap=cmp,vmin=250, vmax=280)
-#if POLE == 'N':
- #  m.plot(0.0,90.0,'ko',markersize=15, latlon=True)
-m.drawparallels(np.arange(-90.,120.,15.),labels=[1,0,0,0]) # draw parallels
-m.drawmeridians(np.arange(0.,420.,30.),labels=meridians) # draw meridians
-plt.colorbar(orientation='vertical',extend='both',shrink=0.8)
-#plt.tight_layout()
-plt.show()
  
 
-#print clon[0,:20]
+       
+       qi0 = -rhoi * (cp_ice*(Tmlt[:-1]-Tf) 
+           + Lfresh*(1.-Tmlt[:-1]/Tf) - cp_ocn*Tmlt[:-1])
+       qi0 = np.reshape(np.tile(qi0,ncat*sw.size),(sw.size,ncat,nilyr))  
+       qi0 = qi0.transpose()
+       qim = np.zeros((ncat,nilyr,sw.size), dtype='float64')
+       tim = np.zeros((ncat,sw.size), dtype='float64')
+
+
+
+       aicenout[:] = aicen[:]
+       tskinout[:] = tskin[:]
+       vicenout[:] = vicen[:]
+       vsnonout[:] = vsnon[:]
+       eicenout[:] = np.swapaxes(eicen,0,1) 
+       esnonout[:] = np.swapaxes(esnon,0,1)
+
+       end = time.time()
+       print("Elapsed (aggregating onto CICE ITD) = %s" % (end - start))
+       
+
+
+
+
 
 
