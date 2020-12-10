@@ -31,25 +31,37 @@ def read_gfdl(infile):
     : type infile: str  
     : rtype: NDArray, NDArray
     ''' 
-    pass
+    with Dataset(infile) as src:
+       aicen = src['part_size'][0]
+       vicen = src['h_ice'][0]
+       vsnon = src['h_snow'][0]
+       tskin = src['t_surf'][0]
+    return (aicen[1:,:,:], vicen, vsnon, tskin[1:,:,:])
 
-def remap_gfdl(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vicen_target):
-    sis_ic=np.array([0.0, 0.1, 0.3, 0.7, 1.1], dtype='float64')
-    ''' 
-    fac1=(0.6445-0.3)/(0.7-0.3)
-    fac2=((1.391-1.1)/(2.035-1.085))
-    fac3=((2.47-2.035)/(3.42-2.035))
-    fac4=((4.567-3.42)/(5.31-3.42))
-    aicenpm5[0, inds] = sum(aicenpm[:2,indjs,indis], axis=0) + \
-                            aicenpm[2,indjs,indis] * fac1     
-    aicenpm5[1, inds] = aicenpm[2,indjs,indis]*(1.-fac1) + \
-                        aicenpm[3,indjs,indis] +           \
-                        aicenpm[4,indjs,indis] 
-    aicenpm5[2, inds] = aicenpm[3,indjs,indis]*(1.-fac2) + aicenpm[4,indjs,indis] * fac3
-    aicenpm5[3, inds] = aicenpm[4,indjs,indis]*(1.-fac3) + aicenpm[5,indjs,indis] * fac4
-    aicenpm5[4, inds] = aicenpm[5,indjs,indis]*(1.-fac4) + np.sum(aicenpm[6:,indjs,indis],axis=0)
-    '''
+def remap_gfdl(aicen_src, vicen_src, vsnon_src, aicen_tar, vicen_tar, vsnon_tar):
+    #sis_ic=np.array([0.0, 0.1, 0.3, 0.7, 1.1], dtype='float64')
+    aicen_tar[0] = np.sum(aicen_src[:3]) 
+    aicen_tar[1] = aicen_src[3]
+    aicen_tar[2] = aicen_src[4]
+    aicen_tar[3:] = 0.0
+    vicen_tar[0] = np.dot(aicen_src[:3], vicen_src[:3]) 
+    vicen_tar[1] = aicen_src[3] * vicen_src[3]
+    vicen_tar[2] = aicen_src[4] * vicen_src[4]
+    vicen_tar[3:] = 0.0
+    vsnon_tar[0] = np.dot(aicen_src[:3], vsnon_src[:3]) 
+    vsnon_tar[1] = aicen_src[3] * vsnon_src[3]
+    vsnon_tar[2] = aicen_src[4] * vsnon_src[4]
+    vsnon_tar[3:] = 0.0
 
 if __name__ == "__main__":
-
-    pass
+    icein = 'ice_model.res.nc'
+    ai_s, vi_s, vs_s, ts_s = read_gfdl(icein)
+    ai_t = np.zeros(5) 
+    vi_t = np.zeros(5) 
+    vs_t = np.zeros(5) 
+    i, j = 100, 199 
+    remap_gfdl(ai_s[:,j,i], vi_s[:,j,i], vs_s[:,j,i],
+               ai_t, vi_t, vs_t) 
+    print ai_t
+    print vi_t
+    print vs_t
