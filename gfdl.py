@@ -62,6 +62,33 @@ def remap_gfdl(aicen_src, vicen_src, vsnon_src, tskini_src,
     tskini_tar[2] =  np.minimum(Tice, tskini_src[4])
     tskini_tar[3:] = Tice
 
+def remap_gfdl_vec(aicen_src, vicen_src, vsnon_src, tskini_src, 
+                    ind, indi, indj,
+                    aicen_tar, vicen_tar, vsnon_tar, tskini_tar):
+    #sis_ic=np.array([0.0, 0.1, 0.3, 0.7, 1.1], dtype='float64')
+    aicen_tar[0,ind] = np.sum(aicen_src[:3, indj, indi], axis=0) 
+    aicen_tar[1,ind] = aicen_src[3, indj, indi]
+    aicen_tar[2,ind] = aicen_src[4, indj, indi]
+    aicen_tar[3:,ind] = 0.0
+    #vicen_tar[0,ind] = np.dot(aicen_src[:3,indj,indi], vicen_src[:3,indj,indi]) 
+    vicen_tar[0,ind] = np.sum(aicen_src[:3,indj,indi]*vicen_src[:3,indj,indi],axis=0) 
+    vicen_tar[1,ind] = aicen_src[3,indj, indi] * vicen_src[3,indj, indi]
+    vicen_tar[2,ind] = aicen_src[4,indj, indi] * vicen_src[4,indj, indi]
+    vicen_tar[3:,ind] = 0.0
+    #vsnon_tar[0,ind] = np.dot(aicen_src[:3,indj, indi], vsnon_src[:3,indj, indi]) 
+    vsnon_tar[0,ind] = np.sum(aicen_src[:3,indj,indi]*vsnon_src[:3,indj,indi],axis=0) 
+    vsnon_tar[1,ind] = aicen_src[3,indj,indi] * vsnon_src[3,indj,indi]
+    vsnon_tar[2,ind] = aicen_src[4,indj,indi] * vsnon_src[4,indj,indi]
+    vsnon_tar[3:,ind] = 0.0
+    maska = aicen_tar[0,:] > puny
+    maskb = aicen_tar[0,:] <= puny
+    tskini_tar[0,ind[maska]] = np.minimum(Tice, np.sum(aicen_src[:3,indj[maska],indi[maska]]* 
+                                tskini_src[:3,indj[maska],indi[maska]], axis=0)/aicen_tar[0,ind[maska]])  
+    tskini_tar[0, ind[maskb]] = Tice
+    tskini_tar[1,ind] =  np.minimum(Tice, tskini_src[3,indj,indi])
+    tskini_tar[2,ind] =  np.minimum(Tice, tskini_src[4,indj,indi])
+    tskini_tar[3:,ind] = Tice
+
 if __name__ == "__main__":
     icein = 'ice_model.res.nc'
     ai_s, vi_s, vs_s, ti_s = read_gfdl(icein)
