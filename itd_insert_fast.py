@@ -245,6 +245,33 @@ source_data = func_map[institute][0](ice_source)
 if institute == 'gfdl':
    aicen_s, vicen_s, vsnon_s, tskin_s = source_data 
 
+
+def remap_energy(aicen, vicen, vsnon, tskin, eicen, esnon):
+    for n in range(ncat):
+       # assume linear temp profile and compute enthalpy
+        if aicen[n,i] > puny: 
+           ts_s = tskin[n,i]-Tice 
+           height = vicen[n,i]/aicen[n,i]
+           hi = height
+           hs = 0.0  
+           nls = nilyr  
+           if vsnon[n,i] > puny:  
+               hs = vsnon[n,i]/aicen[n,i]      
+               height += hs 
+               nls += nslyr
+           slope = (Tf - ts_s) / height 
+           for k in range(nls):
+               if k < nls - nilyr:
+                   Ti =  ts_s + slope*(k+0.5)*hs/float(nslyr)
+                   esnon[k,n,i] =  (-rhos * (-cp_ice*Ti + Lfresh)) * \
+                                 vsnon[n,i]/float(nslyr) 
+               else:        
+                   kl = k if nls == nilyr else k-nslyr    
+                   Ti =  ts_s + slope*(hs+(kl+0.5)*hi/float(nilyr))
+                   eicen[kl,n,i] =    \
+                      -(rhoi * (cp_ice*(Tmlt[kl]-Ti)  \
+                      + Lfresh*(1.0-Tmlt[kl]/Ti) - cp_ocn*Tmlt[kl])) \
+                      * vicen[n,i]/float(nilyr) 
  
 if icein:
     with Dataset(icein) as src, Dataset(iceout, "w") as dst:
@@ -266,6 +293,10 @@ if icein:
        tskinout = dst['TSKINI']
        eicenout = dst['ERGICE']
        esnonout = dst['ERGSNO']
+       apondnout = dst['APONDN']
+       hpondnout = dst['HPONDN']
+       volpondout = dst['VOLPOND']
+       tauageout = dst['TAUAGE']
        aicen = dst['FR'][:]
        vicen = dst['VOLICE'][:]
        vsnon = dst['VOLSNO'][:]
@@ -273,15 +304,20 @@ if icein:
        eicen = dst['ERGICE'][:]
        esnon = dst['ERGSNO'][:]
        eicen = np.swapaxes(eicen,0,1)
-       print 'eice shape ', eicen.shape
+       #print 'eice shape ', eicen.shape
        esnon = np.swapaxes(esnon,0,1)
-       aicenpm5 = aicen.copy(order='C')
-       vicenpm5 = vicen.copy(order='C')
+
+       aicen[:,:]  = 0.0
+       vicen[:,:]  = 0.0
+       vsnon[:,:]  = 0.0
+       eicen[:,:]  = 0.0
+       esnon[:,:]  = 0.0
+       tskin[:,:]  = Tice
+
 
        indi = sw.gi[:]-1 
        indj = sw.gj[:]-1   
        ind = np.array(range(sw.size))
-
 
        start = time.time()
 
@@ -289,55 +325,16 @@ if icein:
        hin = np.zeros((ncat,sw.size), dtype='float64') 
        qin = np.zeros((nilyr,ncat,sw.size), dtype='float64')
        qsn = np.zeros((nslyr,ncat,sw.size), dtype='float64')
-#qsn[:,vsnon>0.0] = esnon[:,vsnon>0.0]*nslyr/vsnon[vsnon>0.0] 
-#qin[:,vicen>0.0] = eicen[:,vicen>0.0]*nilyr/vicen[vicen>0.0] 
 
 
-       #eicen[:,maska] = qin[:,maska]*vicen[maska]/nilyr
        for i in range(sw.size):
            func_map[institute][1](aicen_s[:,indj[i],indi[i]], 
                                   vicen_s[:,indj[i],indi[i]], 
                                   vsnon_s[:,indj[i],indi[i]], 
-                                  aicen[:,i], vicen[:,i], vsnon[:,i]) 
-           tskin[:,i] = np.minimum(Tice, tskin_s[:,indj[i],indi[i]])    
-           #'''
-           for n in range(ncat):
-          # assume linear temp profile and compute enthalpy
-             if aicen[n,i] > puny: 
-                ts_s = tskin_s[n,indj[i],indi[i]]-Tice 
-                height = vicen[n,i]/aicen[n,i]
-                hi = height
-                hs = 0.0  
-                nls = nilyr  
-                if vsnon[n,i] > puny:  
-                    hs = vsnon[n,i]/aicen[n,i]      
-                    height += hs 
-                    nls += nslyr
-                slope = (Tf - ts_s) / height 
-                for k in range(nls):
-                   if k < nls - nilyr:
-                       Ti =  ts_s + slope*(k+0.5)*hs/float(nslyr)
-                       esnon[k,n,i] =  -rhos * (-cp_ice*Ti + Lfresh)
-                   else:        
-                        kl = k if nls == nilyr else k-nslyr    
-                        Ti =  ts_s + slope*(hs+(kl+0.5)*hi/float(nilyr))
-                        eicen[kl,n,i] =    \
-                      -(rhoi * (cp_ice*(Tmlt[kl]-Ti)  \
-                      + Lfresh*(1.0-Tmlt[kl]/Ti) - cp_ocn*Tmlt[kl])) \
-                      * vicen[n,i]/float(nilyr) 
-          #'''  
-
- 
-
-       
-       qi0 = -rhoi * (cp_ice*(Tmlt[:-1]-Tf) 
-           + Lfresh*(1.-Tmlt[:-1]/Tf) - cp_ocn*Tmlt[:-1])
-       qi0 = np.reshape(np.tile(qi0,ncat*sw.size),(sw.size,ncat,nilyr))  
-       qi0 = qi0.transpose()
-       qim = np.zeros((ncat,nilyr,sw.size), dtype='float64')
-       tim = np.zeros((ncat,sw.size), dtype='float64')
-
-
+                                  tskin_s[:,indj[i],indi[i]], 
+                                  aicen[:,i], vicen[:,i], 
+                                  vsnon[:,i], tskin[:,i]) 
+           remap_energy(aicen, vicen, vsnon, tskin, eicen, esnon) 
 
        aicenout[:] = aicen[:]
        tskinout[:] = tskin[:]
@@ -345,6 +342,10 @@ if icein:
        vsnonout[:] = vsnon[:]
        eicenout[:] = np.swapaxes(eicen,0,1) 
        esnonout[:] = np.swapaxes(esnon,0,1)
+       tauageout[:] = 0.0
+       apondnout[:] = 0.0
+       hpondnout[:] = 0.0
+       volpondout[:] = 0.0
 
        end = time.time()
        print("Elapsed (aggregating onto CICE ITD) = %s" % (end - start))
