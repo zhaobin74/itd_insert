@@ -161,7 +161,7 @@ def get_grid(atm, ocn): #reads lat lon for tripolar ocean grid
 
 
 from mitgcm import (read_mit, remap_mit)
-from gfdl import (read_gfdl, remap_gfdl)
+from gfdl import (read_gfdl, remap_gfdl, remap_gfdl_vec)
 
 
 
@@ -199,7 +199,8 @@ for k in range(nilyr):
 salin[nilyr] = saltmax
 Tmlt[nilyr] = -salin[nilyr]*depressT
 
-func_map = {'gfdl': (read_gfdl, remap_gfdl), 
+func_map = {'gfdl': (read_gfdl, remap_gfdl_vec), 
+#func_map = {'gfdl': (read_gfdl, remap_gfdl), 
             'mit': (read_mit, remap_mit)} 
 
 tilefile = sys.argv[1]
@@ -214,7 +215,8 @@ except:
    icein = None
 print icein
 p = icein.split('/')
-iceout = 'seaicethermo_internal_rst-'+institute+'_inserted'
+iceout = 'seaicethermo_internal_rst-'+institute+'_inserted_vectorized'
+#iceout = 'seaicethermo_internal_rst-'+institute+'_inserted'
 print 'output GEOS seaice thermo restart file: ', iceout
 
 index=[[0 for _ in range(ncat-1)] for _ in range(ncat)]
@@ -229,7 +231,7 @@ for j in dist:
 for j in dist:
     index[j]= [x[1]-1 for x in dist[j]]     
     #print j, dist[j]
-print index
+#print index
 
 
 zz=None
@@ -246,7 +248,7 @@ if institute == 'gfdl':
    aicen_s, vicen_s, vsnon_s, tskin_s = source_data 
 
 
-def remap_energy(aicen, vicen, vsnon, tskin, eicen, esnon):
+def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
     for n in range(ncat):
        # assume linear temp profile and compute enthalpy
         if aicen[n,i] > puny: 
@@ -326,15 +328,26 @@ if icein:
        qin = np.zeros((nilyr,ncat,sw.size), dtype='float64')
        qsn = np.zeros((nslyr,ncat,sw.size), dtype='float64')
 
+       #'''  
+       func_map[institute][1](aicen_s, 
+                              vicen_s, 
+                              vsnon_s, 
+                              tskin_s, 
+                              ind, indi, indj, 
+                              aicen, vicen, 
+                              vsnon, tskin) 
+       #'''
 
        for i in range(sw.size):
+           '''
            func_map[institute][1](aicen_s[:,indj[i],indi[i]], 
                                   vicen_s[:,indj[i],indi[i]], 
                                   vsnon_s[:,indj[i],indi[i]], 
                                   tskin_s[:,indj[i],indi[i]], 
                                   aicen[:,i], vicen[:,i], 
                                   vsnon[:,i], tskin[:,i]) 
-           remap_energy(aicen, vicen, vsnon, tskin, eicen, esnon) 
+           '''
+           remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon) 
 
        aicenout[:] = aicen[:]
        tskinout[:] = tskin[:]
