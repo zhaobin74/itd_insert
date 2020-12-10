@@ -2,3 +2,5 @@
 seaicethermo_internal_*
 *_rst
 *.nc
+*.pyc
+tilefile
