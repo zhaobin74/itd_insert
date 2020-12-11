@@ -29,29 +29,51 @@ import data_utils
 import functools
 
 
+MAPL_RHOWTR = 1000.0
 
-with Dataset(icein) as src, Dataset(iceout, "w") as dst:
+def create_tile_rst(fout, tilesize):
+
+   icein = 'seaicethermo_internal_rst'
+
+   with Dataset(icein) as src, Dataset(iceout, "w") as dst:
     # copy global attributes all at once via dictionary
-    dst.setncatts(src.__dict__)
+    #dst.setncatts(src.__dict__)
     # copy dimensions
     for name, dimension in src.dimensions.items():
-        dst.createDimension(
-            name, (len(dimension) if not dimension.isunlimited() else None))
+        #print name, "-->", len(dimension), dimension
+        if name == 'tile':
+            dst.createDimension(name, tilesize)
+        else:
+            dst.createDimension(
+               name, (len(dimension) if not dimension.isunlimited() else None))
     # copy all file data except for the excluded
     for name, variable in src.variables.items():
+        #print name, variable.datatype, variable.dimensions
+        #print src[name].__dict__
         x = dst.createVariable(name, variable.datatype, variable.dimensions)
-        dst[name][:] = src[name][:]
+        #dst[name][:] = src[name][:]
         # copy variable attributes all at once via dictionary
         dst[name].setncatts(src[name].__dict__)
-    aicenout = dst['FR']
-    vicenout = dst['VOLICE']
-    vsnonout = dst['VOLSNO']
-    tskinout = dst['TSKINI']
-    eicenout = dst['ERGICE']
-    esnonout = dst['ERGSNO']
-    aicen = dst['FR'][:]
-    vicen = dst['VOLICE'][:]
-    vsnon = dst['VOLSNO'][:]
-    tskin = dst['TSKINI'][:]
-    eicen = dst['ERGICE'][:]
-    esnon = dst['ERGSNO'][:]
+
+    dst['time'][:] = 0  
+    dst['HSKINI'][:] = 0.5*1000.0 
+    dst['SSKINI'][:] = 30.0
+    dst['QS'][:]     = 0.01
+    dst['CH'][:]     = 1.0e-4
+    dst['CM'][:]     = 1.0e-4
+    dst['CQ'][:]     = 1.0e-4
+    dst['Z0'][:]     = 0.00005
+    dst['WW'][:]     = 0.0
+    dst['SLMASK'][:] = 0.0
+    dst['APONDN'][:] = 0.0
+    dst['HPONDN'][:] = 0.0
+    dst['TAUAGE'][:] = 0.0
+    dst['VOLPOND'][:] = 0.0
+ 
+               
+
+iceout = 'seaicethermo_internal_rst.copy'
+fout = 'seaicethermo_internal_rst.empty'
+
+create_tile_rst(iceout, 24034000)
+
