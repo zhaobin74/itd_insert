@@ -231,15 +231,12 @@ for j in dist:
 for j in dist:
     index[j]= [x[1]-1 for x in dist[j]]     
     #print j, dist[j]
-#print index
 
 
-zz=None
 
 
 
 sw = saltwatertile(tilefile)
-#LON, LAT, numlevels = get_grid(sw.atm, sw.ocn)
 
 # read in source dataset
 source_data = func_map[institute][0](ice_source)
