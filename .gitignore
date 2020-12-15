@@ -1,5 +1,6 @@
 
 seaicethermo_internal_*
+saltwater_internal_*
 *_rst
 *.nc
 *.pyc
