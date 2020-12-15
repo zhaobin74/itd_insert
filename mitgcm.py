@@ -23,6 +23,9 @@ import sys
 import functools
 
 
+
+from cice import *
+
 def read_mit(infile):
     # read in the MITgcm sea ice restart file (binary or netcdf)
     # return aice,hice/volice in dimension (ny, nx)
@@ -34,11 +37,34 @@ def read_mit(infile):
         
     return (aicen, vicen, vsnon, tskin)
 
-def remap_mit(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vicen_target):
+def remap_mit(aicen_src, vicen_src, vsnon_src, tskini_src, 
+              ind, indi, indj,
+              aicen_tar, vicen_tar, vsnon_tar, tskini_tar,
+              *args):
     '''
     repartition ice fraction and volume to cice categories
     '''
-    pass
+
+    atmp = np.zeros(aicen_tar.shape[1], dtype='float32')
+    htmp = np.zeros(aicen_tar.shape[1], dtype='float32')
+    atmp[ind] = aicen_src[indj, indi]
+    maska = atmp > puny
+    maskb = np.logical_not(maskb)
+    htmp[maska] = vicen_src[indj[maska],indi[maska]]/atmp[maska]
+    hb = ice_cat_bounds()  
+    hb[-1] = 1.e15
+    for n in range(1, ncat+1):
+        maskc = np.logical_and(htmp > hb[n-1], htmp <= hb[n])   
+        aicen_tar[n-1, ind[maskc]] =  aicen_src[indj[maskc], indi[maskc]]
+        vicen_tar[n-1, ind[maskc]] =  hicen_src[indj[maskc], indi[maskc]]
+        vsnon_tar[n-1, ind[maskc]] =  vsnon_src[indj[maskc], indi[maskc]]
+        tskini_tar[n-1, ind[maskc]] =  tskini_src[indj[maskc], indi[maskc]]
+    if args:
+        tw_src, sw_src, tw_tar, sw_tar = args
+        tw_tar[ind] =  tw_src[indj, indi]
+        sw_tar[ind] =  sw_src[indj, indi]
+             
+    
 
 
 if __name__ == "__main__":
