@@ -29,9 +29,10 @@ def read_mit(infile):
     # there is no category dimension since mitgcm has only 1 category 
     '''
     : type infile: str  
-    : rtype: NDArray, NDArray
+    : rtype: (NDArray, NDArray, NDArray, NDArray)
     ''' 
-    pass
+        
+    return (aicen, vicen, vsnon, tskin)
 
 def remap_mit(aicen_source, vicen_source, inds, indis, indjs, aicen_target, vicen_target):
     '''
