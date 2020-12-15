@@ -166,10 +166,7 @@ from gfdl import (read_gfdl, remap_gfdl, remap_gfdl_vec)
 
 
 #CICE dimensions
-
-ncat = 5
-nilyr = 4
-nslyr = 1
+from cice import (ncat, nilyr, nslyr)
 
 puny = 1.e-11
 p5 = 0.5
@@ -302,6 +299,7 @@ if icein:
        tskin = dst['TSKINI'][:]
        eicen = dst['ERGICE'][:]
        esnon = dst['ERGSNO'][:]
+       slmask = dst['SLMASK'][:]
        eicen = np.swapaxes(eicen,0,1)
        #print 'eice shape ', eicen.shape
        esnon = np.swapaxes(esnon,0,1)
@@ -346,6 +344,19 @@ if icein:
            '''
            remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon) 
 
+
+       maska = slmask > 0.5
+       for n in range(ncat):
+          aicen[n, maska] = 0.0
+          vicen[n, maska] = 0.0
+          vsnon[n, maska] = 0.0
+          tskin[n, maska] = Tice
+          for k in range(nilyr):
+              eicen[k,n,maska] = 0.0
+          for k in range(nslyr):
+              esnon[k,n,maska] = 0.0
+
+
        aicenout[:] = aicen[:]
        tskinout[:] = tskin[:]
        vicenout[:] = vicen[:]
@@ -361,6 +372,62 @@ if icein:
        print("Elapsed (aggregating onto CICE ITD) = %s" % (end - start))
        
 
+else:
+
+    aicen = np.zeros((ncat, sw.size), dtype='float64')
+    vicen = np.zeros((ncat, sw.size), dtype='float64')
+    vsnon = np.zeros((ncat, sw.size), dtype='float64')
+    tskin = np.zeros((ncat, sw.size), dtype='float64')
+    eicen = np.zeros((nilyr, ncat, sw.size), dtype='float64')
+    esnon = np.zeros((nslyr, ncat, sw.size), dtype='float64')
+
+    tskin[:,:]  = Tice
+
+
+    indi = sw.gi[:]-1 
+    indj = sw.gj[:]-1   
+    ind = np.array(range(sw.size))
+
+    start = time.time()
+
+
+    func_map[institute][1](aicen_s, 
+                           vicen_s, 
+                           vsnon_s, 
+                           tskin_s, 
+                           ind, indi, indj, 
+                           aicen, vicen, 
+                           vsnon, tskin) 
+
+    for i in range(sw.size):
+         '''
+           func_map[institute][1](aicen_s[:,indj[i],indi[i]], 
+                                  vicen_s[:,indj[i],indi[i]], 
+                                  vsnon_s[:,indj[i],indi[i]], 
+                                  tskin_s[:,indj[i],indi[i]], 
+                                  aicen[:,i], vicen[:,i], 
+                                  vsnon[:,i], tskin[:,i]) 
+         '''
+         remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon) 
+
+
+    for n in range(ncat):
+        maska = aicen[n,:] > 1.e20
+        aicen[n, maska] = 0.0
+        vicen[n, maska] = 0.0
+        vsnon[n, maska] = 0.0
+        tskin[n, maska] = Tice
+        for k in range(nilyr):
+             eicen[k,n,maska] = 0.0
+        for k in range(nslyr):
+             esnon[k,n,maska] = 0.0
+
+
+       eicenout[:] = np.swapaxes(eicen,0,1) 
+       esnonout[:] = np.swapaxes(esnon,0,1)
+
+    end = time.time()
+    print("Elapsed (aggregating onto CICE ITD) = %s" % (end - start))
 
 
 
