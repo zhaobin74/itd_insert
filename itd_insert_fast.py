@@ -166,35 +166,9 @@ from gfdl import (read_gfdl, remap_gfdl, remap_gfdl_vec)
 
 
 #CICE dimensions
-from cice import (ncat, nilyr, nslyr)
+from cice import *
 
-puny = 1.e-11
-p5 = 0.5
-c1 = 1.0
-c2 = 2.0
-Tice = 273.15
-Tf = -1.8
-saltmax = 3.2
-nsal = 0.407
-msal = 0.573
-depressT = 0.054
-rhoi      = 917.0
-rhow      = 1026.0
-rhos      = 330.0
-cp_ice    = 2106.
-cp_ocn    = 4218.
-Lsub      = 2.835e6
-Lvap      = 2.501e6
-Lfresh    = Lsub-Lvap 
-
-Tmlt = np.zeros(nilyr+1, dtype='float64')
-salin = np.zeros(nilyr+1, dtype='float64')
-for k in range(nilyr):
-   zn = (float(k+1)-p5) / float(nilyr)
-   salin[k]=(saltmax/c2)*(c1-np.cos(np.pi*np.power(zn,nsal/(msal+zn))))
-   Tmlt[k] = -salin[k]*depressT
-salin[nilyr] = saltmax
-Tmlt[nilyr] = -salin[nilyr]*depressT
+Tmlt = melt_temp()
 
 func_map = {'gfdl': (read_gfdl, remap_gfdl_vec), 
 #func_map = {'gfdl': (read_gfdl, remap_gfdl), 
@@ -238,8 +212,10 @@ sw = saltwatertile(tilefile)
 # read in source dataset
 source_data = func_map[institute][0](ice_source)
 
-if institute == 'gfdl':
+if len(source_data) == 4:
    aicen_s, vicen_s, vsnon_s, tskin_s = source_data 
+elif len(source_data) == 6:
+   aicen_s, vicen_s, vsnon_s, tskin_s, tw_s, sw_s = source_data 
 
 
 def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
@@ -373,6 +349,9 @@ if icein:
        
 
 else:
+    from write_ice_restart import create_tile_rst
+
+    fin = 'saltwater_internal_rst' 
 
     aicen = np.zeros((ncat, sw.size), dtype='float64')
     vicen = np.zeros((ncat, sw.size), dtype='float64')
@@ -380,8 +359,10 @@ else:
     tskin = np.zeros((ncat, sw.size), dtype='float64')
     eicen = np.zeros((nilyr, ncat, sw.size), dtype='float64')
     esnon = np.zeros((nslyr, ncat, sw.size), dtype='float64')
+    tskinw = np.zeros(sw.size, dtype='float32')
+    sskinw = np.zeros(sw.size, dtype='float32')
 
-    tskin[:,:]  = Tice
+    tskin[:]  = Tice
 
 
     indi = sw.gi[:]-1 
@@ -390,14 +371,24 @@ else:
 
     start = time.time()
 
-
-    func_map[institute][1](aicen_s, 
-                           vicen_s, 
-                           vsnon_s, 
-                           tskin_s, 
-                           ind, indi, indj, 
-                           aicen, vicen, 
-                           vsnon, tskin) 
+    if len(source_data) == 4:
+        func_map[institute][1](aicen_s, 
+                               vicen_s, 
+                               vsnon_s, 
+                               tskin_s, 
+                               ind, indi, indj, 
+                               aicen, vicen, 
+                               vsnon, tskin) 
+    elif len(source_data) == 6:
+        func_map[institute][1](aicen_s, 
+                               vicen_s, 
+                               vsnon_s, 
+                               tskin_s, 
+                               ind, indi, indj, 
+                               aicen, vicen, 
+                               vsnon, tskin,
+                               tw_s, sw_s, tskinw, sskinw) 
+    
 
     for i in range(sw.size):
          '''
@@ -423,11 +414,22 @@ else:
              esnon[k,n,maska] = 0.0
 
 
-       eicenout[:] = np.swapaxes(eicen,0,1) 
-       esnonout[:] = np.swapaxes(esnon,0,1)
+    eicen = np.swapaxes(eicen,0,1) 
+    esnon = np.swapaxes(esnon,0,1)
 
     end = time.time()
     print("Elapsed (aggregating onto CICE ITD) = %s" % (end - start))
+
+    start = time.time()
+    if len(source_data) == 4:
+        create_tile_rst(fin, iceout, sw.size, aicen, vicen,
+                       vsnon, tskin, eicen, esnon)
+    elif len(source_data) == 6:
+        create_tile_rst(fin, iceout, sw.size, aicen, vicen,
+                       vsnon, tskin, eicen, esnon, sst=tskinw, sss=sskinw)
+
+    end = time.time()
+    print("Elapsed (output final restart file) = %s" % (end - start))
 
 
 
