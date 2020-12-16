@@ -34,21 +34,22 @@ def read_mit(infile):
     : type infile: str  
     : rtype: (NDArray, NDArray, NDArray, NDArray)
     ''' 
-    nx = ??
-    ny = ?? 
+    nx = 5400
+    ny = 15
+    ro = 'A'
     with open(infile,'rb') as f:
         aicen = np.fromfile(f, dtype=np.float32, count = nx*ny)
-        np.reshape(aicen,(ny, nx))   
+        aicen = np.reshape(aicen,(ny, nx), order=ro)   
         vicen = np.fromfile(f, dtype=np.float32, count = nx*ny)
-        np.reshape(vicen,(ny, nx))   
+        vicen = np.reshape(vicen,(ny, nx), order=ro)   
         vsnon = np.fromfile(f, dtype=np.float32, count = nx*ny)
-        np.reshape(vsnon,(ny, nx))   
+        vsnon = np.reshape(vsnon,(ny, nx), order=ro)   
         tskin = np.fromfile(f, dtype=np.float32, count = nx*ny)
-        np.reshape(tskin,(ny, nx))   
+        tskin = np.reshape(tskin,(ny, nx), order=ro)   
         sst   = np.fromfile(f, dtype=np.float32, count = nx*ny)
-        np.reshape(sst,(ny, nx))   
+        sst   = np.reshape(sst,(ny, nx),  order=ro)   
         sss   = np.fromfile(f, dtype=np.float32, count = nx*ny)
-        np.reshape(sss,(ny, nx))   
+        sss   = np.reshape(sss,(ny, nx),  order=ro)   
 #        print np.reshape(data,(2,3))
 
     return (aicen, vicen, vsnon, tskin, sst, sss)
@@ -65,14 +66,14 @@ def remap_mit(aicen_src, vicen_src, vsnon_src, tskini_src,
     htmp = np.zeros(aicen_tar.shape[1], dtype='float32')
     atmp[ind] = aicen_src[indj, indi]
     maska = atmp > puny
-    maskb = np.logical_not(maskb)
+    maskb = np.logical_not(maska)
     htmp[maska] = vicen_src[indj[maska],indi[maska]]/atmp[maska]
     hb = ice_cat_bounds()  
     hb[-1] = 1.e15
     for n in range(1, ncat+1):
         maskc = np.logical_and(htmp > hb[n-1], htmp <= hb[n])   
         aicen_tar[n-1, ind[maskc]] =  aicen_src[indj[maskc], indi[maskc]]
-        vicen_tar[n-1, ind[maskc]] =  hicen_src[indj[maskc], indi[maskc]]
+        vicen_tar[n-1, ind[maskc]] =  vicen_src[indj[maskc], indi[maskc]]
         vsnon_tar[n-1, ind[maskc]] =  vsnon_src[indj[maskc], indi[maskc]]
         tskini_tar[n-1, ind[maskc]] =  tskini_src[indj[maskc], indi[maskc]]
     if args:
