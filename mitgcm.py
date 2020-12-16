@@ -34,8 +34,24 @@ def read_mit(infile):
     : type infile: str  
     : rtype: (NDArray, NDArray, NDArray, NDArray)
     ''' 
-        
-    return (aicen, vicen, vsnon, tskin)
+    nx = ??
+    ny = ?? 
+    with open(infile,'rb') as f:
+        aicen = np.fromfile(f, dtype=np.float32, count = nx*ny)
+        np.reshape(aicen,(ny, nx))   
+        vicen = np.fromfile(f, dtype=np.float32, count = nx*ny)
+        np.reshape(vicen,(ny, nx))   
+        vsnon = np.fromfile(f, dtype=np.float32, count = nx*ny)
+        np.reshape(vsnon,(ny, nx))   
+        tskin = np.fromfile(f, dtype=np.float32, count = nx*ny)
+        np.reshape(tskin,(ny, nx))   
+        sst   = np.fromfile(f, dtype=np.float32, count = nx*ny)
+        np.reshape(sst,(ny, nx))   
+        sss   = np.fromfile(f, dtype=np.float32, count = nx*ny)
+        np.reshape(sss,(ny, nx))   
+#        print np.reshape(data,(2,3))
+
+    return (aicen, vicen, vsnon, tskin, sst, sss)
 
 def remap_mit(aicen_src, vicen_src, vsnon_src, tskini_src, 
               ind, indi, indj,
