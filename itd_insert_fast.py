@@ -159,6 +159,13 @@ def get_grid(atm, ocn): #reads lat lon for tripolar ocean grid
     return LON, LAT, numlev
 
 
+def num_tiles(ifile):
+   num = 0
+   with Dataset(ifile) as src:
+       num = src.dimensions['tile']
+   return num
+
+
 
 from mitgcm import (read_mit, remap_mit)
 from gfdl import (read_gfdl, remap_gfdl, remap_gfdl_vec)
@@ -180,14 +187,13 @@ ice_source = sys.argv[3]
 print 'tile file: ', tilefile
 print 'source sea ice datafile: ', ice_source
 print 'from ', institute
-try:
-   icein = sys.argv[4]
-except:
-   icein = None
-print icein
-p = icein.split('/')
-iceout = 'seaicethermo_internal_rst-'+institute+'_inserted_vectorized'
+icein = sys.argv[4]
+print 'GEOS restart template file: ', icein
+#iceout = 'seaicethermo_internal_rst-'+institute+'_inserted_vectorized'
+#iceout = 'saltwater_internal_rst-'+institute+'_inserted_vectorized'
 #iceout = 'seaicethermo_internal_rst-'+institute+'_inserted'
+iceout = icein+'-'+institute+'_inserted_vectorized'
+
 print 'output GEOS seaice thermo restart file: ', iceout
 
 index=[[0 for _ in range(ncat-1)] for _ in range(ncat)]
@@ -217,6 +223,7 @@ if len(source_data) == 4:
 elif len(source_data) == 6:
    aicen_s, vicen_s, vsnon_s, tskin_s, tw_s, sw_s = source_data 
 
+print aicen_s.shape
 
 def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
     for n in range(ncat):
@@ -245,7 +252,7 @@ def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
                       + Lfresh*(1.0-Tmlt[kl]/Ti) - cp_ocn*Tmlt[kl])) \
                       * vicen[n,i]/float(nilyr) 
  
-if icein:
+if num_tiles(icein) == sw.size:
     with Dataset(icein) as src, Dataset(iceout, "w") as dst:
        # copy global attributes all at once via dictionary
        dst.setncatts(src.__dict__)
@@ -351,12 +358,12 @@ if icein:
 else:
     from write_ice_restart import create_tile_rst
 
-    fin = 'saltwater_internal_rst' 
+    #fin = 'saltwater_internal_rst' 
 
     aicen = np.zeros((ncat, sw.size), dtype='float64')
     vicen = np.zeros((ncat, sw.size), dtype='float64')
     vsnon = np.zeros((ncat, sw.size), dtype='float64')
-    tskin = np.zeros((ncat, sw.size), dtype='float64')
+    tskin = np.zeros((ncat, sw.size), dtype='float32')
     eicen = np.zeros((nilyr, ncat, sw.size), dtype='float64')
     esnon = np.zeros((nslyr, ncat, sw.size), dtype='float64')
     tskinw = np.zeros(sw.size, dtype='float32')
@@ -422,10 +429,10 @@ else:
 
     start = time.time()
     if len(source_data) == 4:
-        create_tile_rst(fin, iceout, sw.size, aicen, vicen,
+        create_tile_rst(icein, iceout, sw.size, aicen, vicen,
                        vsnon, tskin, eicen, esnon)
     elif len(source_data) == 6:
-        create_tile_rst(fin, iceout, sw.size, aicen, vicen,
+        create_tile_rst(icein, iceout, sw.size, aicen, vicen,
                        vsnon, tskin, eicen, esnon, sst=tskinw, sss=sskinw)
 
     end = time.time()
