@@ -401,7 +401,7 @@ else:
          '''
          remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon) 
 
-
+    ''' 
     for n in range(ncat):
         maska = aicen[n,:] > 1.e20
         aicen[n, maska] = 0.0
@@ -412,7 +412,7 @@ else:
              eicen[k,n,maska] = 0.0
         for k in range(nslyr):
              esnon[k,n,maska] = 0.0
-
+    '''
 
     eicen = np.swapaxes(eicen,0,1) 
     esnon = np.swapaxes(esnon,0,1)
