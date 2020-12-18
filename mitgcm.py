@@ -36,7 +36,7 @@ def read_mit(infile):
     ''' 
     nx = 5400
     ny = 15
-    ro = 'A'
+    ro = 'C'
     with open(infile,'rb') as f:
         aicen = np.fromfile(f, dtype=np.float32, count = nx*ny)
         aicen = np.reshape(aicen,(ny, nx), order=ro)   
