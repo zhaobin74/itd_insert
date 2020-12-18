@@ -29,7 +29,7 @@ import data_utils
 import functools
 
 
-MAPL_RHOWTR = 1000.0
+MAPL_RHOWTR = 1026.0
 
 from cice import (ncat, nilyr, nslyr)
 
