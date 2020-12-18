@@ -75,7 +75,7 @@ def plot_pole_2(LON,LAT,VAR, LON1,LAT1,VAR1, levels, levels1, setcolor,setnorm,t
 
 class saltwatertile:
 
-    def __init__(self, file): 
+    def __init__(self, file, skiprows=0): 
          
        header = np.genfromtxt(file, dtype='i4', usecols=(0), max_rows=8)
        #print header
@@ -83,28 +83,51 @@ class saltwatertile:
        self.ocn = 'x'.join([str(x) for x in header[6:]])
        self.nx, self.ny = header[6], header[7]
        print self.atm, self.ocn 
-       tile=np.genfromtxt(file, dtype=[('type','i1'), ('area','f8'), ('lon','f8'),('lat','f8'), ('gi1','i4'),
+       if skiprows > 0:
+          data = self.iter_loadtxt(file, skiprows=skiprows, dtype=int) 
+          print 'data: ', data.shape
+          self.size = data.shape[0]/2
+          self.gi = data[0::2]
+          self.gj = data[1::2] 
+       else:    
+          tile=np.genfromtxt(file, dtype=[('type','i1'), ('area','f8'), ('lon','f8'),('lat','f8'), ('gi1','i4'),
                            ('gj1','i4'), ('gw1','f8'),
                            ('idum','i4'), ('gi2','i4'), ('gj2','i4'), ('gw2','f8')], skip_header=8)
-       n1=0
-       n2=0
-       for n in range(1, tile.shape[0]+1, 1):
-           if tile[n-1][0] == 0:
-               n1 = n
-               break
+          n1=0
+          n2=0
+          for n in range(1, tile.shape[0]+1, 1):
+             if tile[n-1][0] == 0:
+                n1 = n
+                break
        #print n1
-       for n in range(n1, tile.shape[0]+1, 1):
-           if tile[n-1][0] != 0:
-               n2 = n
-               break
+          for n in range(n1, tile.shape[0]+1, 1):
+             if tile[n-1][0] != 0:
+                n2 = n
+                break
        #print n2
-       icetile=tile[n1-1:]
+          icetile=tile[n1-1:]
        #print icetile.shape
        #print 'hhh: ',icetile[0][2], icetile[-1][2]
-       self.size = icetile.shape[0]
-       self.gi = icetile['gi2'][:]
-       self.gj = icetile['gj2'][:]
-       #return icetile
+          self.size = icetile.shape[0]
+          self.gi = icetile['gi2'][:]
+          self.gj = icetile['gj2'][:]
+
+    def iter_loadtxt(self, filename, skiprows=0, dtype=int):
+       def iter_func():
+          with open(filename, 'r') as infile:
+              for _ in range(skiprows):
+                  next(infile)
+              for line in infile:
+                 line = line.rstrip().split()
+                 #print 'tile line items  # ', len(line) 
+                 for item in line[8:10]:
+                     yield dtype(item)
+          #iter_loadtxt.rowlength = len(line)
+
+       data = np.fromiter(iter_func(), dtype=dtype)
+       #data = data.reshape((-1, iter_loadtxt.rowlength))
+       return data
+
 
 
 def get_nearest(lon, lat, LON, LAT, rad):
@@ -192,7 +215,7 @@ print 'GEOS restart template file: ', icein
 #iceout = 'seaicethermo_internal_rst-'+institute+'_inserted_vectorized'
 #iceout = 'saltwater_internal_rst-'+institute+'_inserted_vectorized'
 #iceout = 'seaicethermo_internal_rst-'+institute+'_inserted'
-iceout = icein+'-'+institute+'_inserted_vectorized'
+iceout = icein+'-'+institute+'_inserted-llc2160'
 
 print 'output GEOS seaice thermo restart file: ', iceout
 
@@ -213,17 +236,24 @@ for j in dist:
 
 
 
-sw = saltwatertile(tilefile)
+start = time.time()
+print "start processing tile file..."
+sw = saltwatertile(tilefile, skiprows=4903601)
+end = time.time()
+print "Elapsed (processing tile information) = %s" % (end - start)
 
 # read in source dataset
+
+start = time.time()
+print "start read in ..."
 source_data = func_map[institute][0](ice_source)
+end = time.time()
+print "Elapsed (read in input data) = %s" % (end - start)
 
 if len(source_data) == 4:
    aicen_s, vicen_s, vsnon_s, tskin_s = source_data 
 elif len(source_data) == 6:
    aicen_s, vicen_s, vsnon_s, tskin_s, tw_s, sw_s = source_data 
-
-print aicen_s.shape
 
 def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
     for n in range(ncat):
