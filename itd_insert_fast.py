@@ -83,34 +83,11 @@ class saltwatertile:
        self.ocn = 'x'.join([str(x) for x in header[6:]])
        self.nx, self.ny = header[6], header[7]
        print self.atm, self.ocn 
-       if skiprows > 0:
-          data = self.iter_loadtxt(file, skiprows=skiprows, dtype=int) 
-          print 'data: ', data.shape
-          self.size = data.shape[0]/2
-          self.gi = data[0::2]
-          self.gj = data[1::2] 
-       else:    
-          tile=np.genfromtxt(file, dtype=[('type','i1'), ('area','f8'), ('lon','f8'),('lat','f8'), ('gi1','i4'),
-                           ('gj1','i4'), ('gw1','f8'),
-                           ('idum','i4'), ('gi2','i4'), ('gj2','i4'), ('gw2','f8')], skip_header=8)
-          n1=0
-          n2=0
-          for n in range(1, tile.shape[0]+1, 1):
-             if tile[n-1][0] == 0:
-                n1 = n
-                break
-       #print n1
-          for n in range(n1, tile.shape[0]+1, 1):
-             if tile[n-1][0] != 0:
-                n2 = n
-                break
-       #print n2
-          icetile=tile[n1-1:]
-       #print icetile.shape
-       #print 'hhh: ',icetile[0][2], icetile[-1][2]
-          self.size = icetile.shape[0]
-          self.gi = icetile['gi2'][:]
-          self.gj = icetile['gj2'][:]
+       data = self.iter_loadtxt(file, skiprows=8, dtype=int) 
+       self.size = data.shape[0]/2
+       print 'total # of ocean tiles: ', self.size
+       self.gi = data[0::2]
+       self.gj = data[1::2] 
 
     def iter_loadtxt(self, filename, skiprows=0, dtype=int):
        def iter_func():
@@ -121,11 +98,10 @@ class saltwatertile:
                  line = line.rstrip().split()
                  #print 'tile line items  # ', len(line) 
                  for item in line[8:10]:
-                     yield dtype(item)
-          #iter_loadtxt.rowlength = len(line)
+                     if dtype(line[0]) == 0:
+                        yield dtype(item)
 
        data = np.fromiter(iter_func(), dtype=dtype)
-       #data = data.reshape((-1, iter_loadtxt.rowlength))
        return data
 
 
@@ -201,7 +177,6 @@ from cice import *
 Tmlt = melt_temp()
 
 func_map = {'gfdl': (read_gfdl, remap_gfdl_vec), 
-#func_map = {'gfdl': (read_gfdl, remap_gfdl), 
             'mit': (read_mit, remap_mit)} 
 
 tilefile = sys.argv[1]
@@ -215,9 +190,6 @@ print 'GEOS restart template file: ', icein
 #iceout = 'seaicethermo_internal_rst-'+institute+'_inserted_vectorized'
 #iceout = 'saltwater_internal_rst-'+institute+'_inserted_vectorized'
 #iceout = 'seaicethermo_internal_rst-'+institute+'_inserted'
-iceout = icein+'-'+institute+'_inserted-llc2160'
-
-print 'output GEOS seaice thermo restart file: ', iceout
 
 index=[[0 for _ in range(ncat-1)] for _ in range(ncat)]
 ii=range(ncat)
@@ -242,8 +214,10 @@ sw = saltwatertile(tilefile, skiprows=4903601)
 end = time.time()
 print "Elapsed (processing tile information) = %s" % (end - start)
 
-# read in source dataset
+iceout = icein+'-'+institute+'_inserted-'+sw.atm+'_'+sw.ocn
+print 'output GEOS seaice thermo restart file: ', iceout
 
+# read in source dataset
 start = time.time()
 print "start read in ..."
 source_data = func_map[institute][0](ice_source)
