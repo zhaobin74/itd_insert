@@ -239,6 +239,7 @@ def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
                height += hs 
                nls += nslyr
            slope = (Tf - ts_s) / height 
+           #print i, n, ts_s, height
            for k in range(nls):
                if k < nls - nilyr:
                    Ti =  ts_s + slope*(k+0.5)*hs/float(nslyr)

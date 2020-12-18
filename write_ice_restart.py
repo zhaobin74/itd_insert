@@ -102,6 +102,16 @@ def create_tile_rst(fin, fout, tilesize, aice_in, vice_in,
             sys.exit(1) 
         else:
             dst['SSKINW'][:] = sss
+    if 'TSKINW' in src.variables:
+       print 'sst min, max :', sst.min(), sst.max()
+    if 'SSKINW' in src.variables:
+       print 'sss min, max :', sss.min(), sss.max()
+    print 'tskin min, max :', tskin_in.min(), tskin_in.max()
+    print 'aicen min, max :', aiceout.min(), aiceout.max()
+    aice = np.sum(aiceout, axis=0)
+    print 'sum(FR) min, max :', aice.min(), aice.max()
+    print 'vice min, max :', vice_in.min(), vice_in.max()
+    print 'vsno min, max :', vsno_in.min(), vsno_in.max()
  
                
 if __name__ == "__main__":
