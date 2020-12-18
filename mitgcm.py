@@ -34,8 +34,10 @@ def read_mit(infile):
     : type infile: str  
     : rtype: (NDArray, NDArray, NDArray, NDArray)
     ''' 
-    nx = 5400
-    ny = 15
+    #nx = 5400
+    #ny = 15
+    nx = 559872
+    ny = 72
     ro = 'C'
     with open(infile,'rb') as f:
         aicen = np.fromfile(f, dtype=np.float32, count = nx*ny)
