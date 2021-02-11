@@ -89,6 +89,10 @@ class saltwatertile:
        self.gi = data[0::2]
        self.gj = data[1::2] 
 
+       data = self.iter_loadtxt2(file, skiprows=8, dtype=float) 
+       self.lons = data[0::2]
+       self.lats = data[1::2] 
+
     def iter_loadtxt(self, filename, skiprows=0, dtype=int):
        def iter_func():
           with open(filename, 'r') as infile:
@@ -98,6 +102,21 @@ class saltwatertile:
                  line = line.rstrip().split()
                  #print 'tile line items  # ', len(line) 
                  for item in line[8:10]:
+                     if dtype(line[0]) == 0:
+                        yield dtype(item)
+
+       data = np.fromiter(iter_func(), dtype=dtype)
+       return data
+
+    def iter_loadtxt2(self, filename, skiprows=0, dtype=int):
+       def iter_func():
+          with open(filename, 'r') as infile:
+              for _ in range(skiprows):
+                  next(infile)
+              for line in infile:
+                 line = line.rstrip().split()
+                 #print 'tile line items  # ', len(line) 
+                 for item in line[2:4]:
                      if dtype(line[0]) == 0:
                         yield dtype(item)
 
@@ -160,8 +179,13 @@ def get_grid(atm, ocn): #reads lat lon for tripolar ocean grid
 
 def num_tiles(ifile):
    num = 0
-   with Dataset(ifile) as src:
-       num = src.dimensions['tile']
+   #with Dataset(ifile) as src:
+   ncfile = Dataset(ifile, "r")
+   tiledim = ncfile.dimensions['tile']
+   #print 'dims: ', num.size
+   num = tiledim.size
+   ncfile.close()
+   assert num != 0
    return num
 
 
@@ -238,10 +262,10 @@ def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
            hi = height
            hs = 0.0  
            nls = nilyr  
-           if vsnon[n,i] > puny:  
-               hs = vsnon[n,i]/aicen[n,i]      
-               height += hs 
-               nls += nslyr
+           if vsnon[n,i] > 0.0:  
+              hs = vsnon[n,i]/aicen[n,i]      
+              height += hs 
+              nls += nslyr
            slope = (Tf - ts_s) / height 
            #print i, n, ts_s, height
            for k in range(nls):
@@ -256,8 +280,16 @@ def remap_energy(i, aicen, vicen, vsnon, tskin, eicen, esnon):
                       -(rhoi * (cp_ice*(Tmlt[kl]-Ti)  \
                       + Lfresh*(1.0-Tmlt[kl]/Ti) - cp_ocn*Tmlt[kl])) \
                       * vicen[n,i]/float(nilyr) 
- 
-if num_tiles(icein) == sw.size:
+
+ntiles = num_tiles(icein)
+#ntiles = 0
+#with Dataset(icein) as src:
+#    ntiles = src.dimensions['tile']
+print 'tiles in input and tielfile: ', ntiles,  sw.size 
+#print 'ntiles: ', ntiles
+#ntiles = sw.size
+if ntiles == sw.size:
+    print 'use the exisiting internal rst'
     with Dataset(icein) as src, Dataset(iceout, "w") as dst:
        # copy global attributes all at once via dictionary
        dst.setncatts(src.__dict__)
@@ -344,6 +376,18 @@ if num_tiles(icein) == sw.size:
           for k in range(nslyr):
               esnon[k,n,maska] = 0.0
 
+      # '''
+       for k in range(sw.size):
+           if abs(sw.lons[k]-(-41.62727)) < 1.e-3 and \
+              abs(sw.lats[k]-(-77.30772)) < 1.e-3:
+              print sw.lons[k], sw.lats[k]
+              for n in range(5):
+                 print aicen[n,k], tskin[n,k]
+                 print vicen[n,k], vsnon[n,k] 
+                 print eicen[:,n,k]
+                 print esnon[:,n,k]
+                 print '====================' 
+      # '''
 
        aicenout[:] = aicen[:]
        tskinout[:] = tskin[:]
