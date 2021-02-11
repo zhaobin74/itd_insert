@@ -6,6 +6,7 @@ nilyr = 4
 nslyr = 1
 
 puny = 1.e-11
+hs_min = 1.e-4
 
 c3 = 3.0
 c15 = 15.0
