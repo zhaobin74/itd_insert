@@ -5,3 +5,4 @@ saltwater_internal_*
 *.nc
 *.pyc
 tilefile
+tile.data*
