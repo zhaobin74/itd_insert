@@ -23,7 +23,7 @@ import sys
 import functools
 
 puny = 1.e-11
-Tice = 273.15
+Tice = 273.16
 
 def read_gfdl(infile):
     # read in the GFDL SIS sea ice restart file (netcdf)
