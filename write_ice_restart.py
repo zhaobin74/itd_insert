@@ -94,6 +94,9 @@ def create_tile_rst(fin, fout, tilesize, aice_in, vice_in,
          aiceout[1:,:] = aice_in
          aiceout[0,:]  = np.maximum(0.0, np.minimum(1.0, 1.0-np.sum(aice_in,axis=0))) 
          dst['FR'][:] = aiceout
+         print 'aicen min, max :', aiceout.min(), aiceout.max()
+         aice = np.sum(aiceout, axis=0)
+         print 'sum(FR) min, max :', aice.min(), aice.max()
       print '4th batch vars have been processed' 
       dst['VOLICE'][:] = vice_in
       dst['VOLSNO'][:] = vsno_in
@@ -119,9 +122,6 @@ def create_tile_rst(fin, fout, tilesize, aice_in, vice_in,
       if 'SSKINW' in src.variables:
          print 'sss min, max :', sss.min(), sss.max()
       print 'tskin min, max :', tskin_in.min(), tskin_in.max()
-      print 'aicen min, max :', aiceout.min(), aiceout.max()
-      aice = np.sum(aiceout, axis=0)
-      print 'sum(FR) min, max :', aice.min(), aice.max()
       print 'vice min, max :', vice_in.min(), vice_in.max()
       print 'vsno min, max :', vsno_in.min(), vsno_in.max()
  
